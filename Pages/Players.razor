@@ -1,0 +1,41 @@
+﻿@page "/players/{teamId}"
+@inject ISportsApiService SportsApi
+@using MultiSportTracker.Data
+@using MultiSportTracker.Models
+
+<h2>Players</h2>
+
+@if (players == null)
+{
+    <p>Loading players...</p>
+}
+else if (!players.Any())
+{
+    <p>No players found.</p>
+}
+else
+{
+    <div class="player-grid">
+        @foreach (var p in players)
+        {
+            <div class="player-card">
+                @if (!string.IsNullOrWhiteSpace(p.strCutout))
+                {
+                    <img src="@p.strCutout" alt="@p.strPlayer" width="100" />
+                }
+                <div>@p.strPlayer</div>
+                <div class="muted">@p.strPosition</div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string teamId { get; set; } = "";
+    private List<Player>? players;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        players = await SportsApi.GetPlayersAsync(teamId);
+    }
+}

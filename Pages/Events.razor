@@ -1,0 +1,44 @@
+﻿@page "/events/{teamId}"
+@inject ISportsApiService SportsApi
+@using MultiSportTracker.Data
+@using MultiSportTracker.Models
+
+<h2>Upcoming Matches</h2>
+
+@if (events == null)
+{
+    <p>Loading upcoming matches...</p>
+}
+else if (!events.Any())
+{
+    <p>No upcoming matches found.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr><th>Event</th><th>Date</th><th>Time</th><th>League</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var e in events)
+        {
+            <tr>
+                <td>@e.strEvent</td>
+                <td>@e.dateEvent</td>
+                <td>@e.strTime</td>
+                <td>@e.strLeague</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter] public string teamId { get; set; } = "";
+    private List<Event>? events;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        events = await SportsApi.GetEventsAsync(teamId);
+    }
+}

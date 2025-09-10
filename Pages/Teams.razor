@@ -1,0 +1,46 @@
+﻿@page "/teams/{league}"
+@inject ISportsApiService SportsApi
+@using MultiSportTracker.Data
+@using MultiSportTracker.Models
+@using System.Globalization
+
+<h2>@(CultureInfo.CurrentCulture.TextInfo.ToTitleCase(league)) Teams</h2>
+
+@if (teams == null)
+{
+    <p>Loading teams...</p>
+}
+else if (!teams.Any())
+{
+    <p>No teams found for '@league'.</p>
+}
+else
+{
+    <div class="team-grid">
+        @foreach (var t in teams)
+        {
+            <div class="team-card">
+                @if (!string.IsNullOrWhiteSpace(t.strTeamBadge))
+                {
+                    <img src="@t.strTeamBadge" alt="@t.strTeam" width="80" />
+                }
+                <div class="team-name">@t.strTeam</div>
+                <div class="team-league">@t.strLeague</div>
+                <div class="team-links">
+                    <a href="/events/@t.idTeam">Matches</a> |
+                    <a href="/players/@t.idTeam">Players</a>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string league { get; set; } = "soccer";
+    private List<Team>? teams;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        teams = await SportsApi.GetTeamsAsync(league);
+    }
+}
