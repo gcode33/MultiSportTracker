@@ -3,42 +3,112 @@
 @using MultiSportTracker.Data
 @using MultiSportTracker.Models
 
-<h2>Upcoming Matches</h2>
+<div class="mb-8">
+    <h1 class="text-2xl font-bold mb-4">
+        <span class="text-primary">📅</span>
+        Upcoming Matches
+    </h1>
+    <p class="text-gray">View scheduled matches and fixtures for this team</p>
+</div>
 
-@if (events == null)
+@if (isLoading)
 {
-    <p>Loading upcoming matches...</p>
+    <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <h3 class="text-lg font-medium mb-2">Loading matches...</h3>
+        <p class="text-gray">Fetching the latest fixture information</p>
+    </div>
 }
 else if (!events.Any())
 {
-    <p>No upcoming matches found.</p>
+    <div class="empty-state">
+        <div class="empty-state-icon">📅</div>
+        <h3 class="text-xl font-semibold mb-2">No upcoming matches</h3>
+        <p class="text-gray mb-6">There are currently no scheduled fixtures for this team.</p>
+        <a href="/" class="btn btn-primary">Back to Home</a>
+    </div>
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr><th>Event</th><th>Date</th><th>Time</th><th>League</th></tr>
-        </thead>
-        <tbody>
-        @foreach (var e in events)
+    <div class="mb-6">
+        <p class="text-gray">Found <span class="font-semibold text-primary">@events.Count</span> upcoming matches</p>
+    </div>
+    
+    <div class="card-grid">
+        @foreach (var match in events)
         {
-            <tr>
-                <td>@e.strEvent</td>
-                <td>@e.dateEvent</td>
-                <td>@e.strTime</td>
-                <td>@e.strLeague</td>
-            </tr>
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-image" style="background: var(--primary-100); display: flex; align-items: center; justify-content: center; color: var(--primary-600); font-size: 1.5rem; font-weight: bold;">
+                        🏆
+                    </div>
+                    <div>
+                        <h3 class="card-title">@match.strEvent</h3>
+                        <p class="card-subtitle">@match.strLeague</p>
+                    </div>
+                </div>
+                
+                <div class="card-content">
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium text-gray">📅 Date:</span>
+                            <span class="text-primary">@FormatDate(match.dateEvent)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium text-gray">⏰ Time:</span>
+                            <span class="text-primary">@(string.IsNullOrWhiteSpace(match.strTime) ? "TBD" : match.strTime)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-actions">
+                    <span class="btn btn-secondary btn-sm">📺 Watch Live</span>
+                    <span class="btn btn-secondary btn-sm">📊 Match Stats</span>
+                </div>
+            </div>
         }
-        </tbody>
-    </table>
+    </div>
 }
 
 @code {
     [Parameter] public string teamId { get; set; } = "";
-    private List<Event>? events;
+    private List<Event> events = new();
+    private bool isLoading = false;
 
     protected override async Task OnParametersSetAsync()
     {
-        events = await SportsApi.GetEventsAsync(teamId);
+        await LoadEvents();
+    }
+
+    private async Task LoadEvents()
+    {
+        isLoading = true;
+        StateHasChanged();
+        
+        try
+        {
+            events = await SportsApi.GetEventsAsync(teamId);
+        }
+        catch
+        {
+            events = new List<Event>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatDate(string dateStr)
+    {
+        if (string.IsNullOrWhiteSpace(dateStr)) return "TBD";
+        
+        if (DateTime.TryParse(dateStr, out var date))
+        {
+            return date.ToString("MMM dd, yyyy");
+        }
+        
+        return dateStr;
     }
 }

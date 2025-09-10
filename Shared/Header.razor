@@ -1,3 +1,36 @@
 ﻿<header class="header">
-    <h1>Multi-Sport Tracker</h1>
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <h1>Multi-Sport Tracker</h1>
+            <span class="text-sm bg-primary-100 text-primary-700 px-3 py-1 rounded-full font-medium">
+                Live Sports Data
+            </span>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <div class="text-sm text-gray-600">
+                <span id="current-time"></span>
+            </div>
+            <div class="w-2 h-2 bg-success-500 rounded-full animate-pulse" title="Connected"></div>
+        </div>
+    </div>
 </header>
+
+<script>
+    function updateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true
+        });
+        const timeElement = document.getElementById('current-time');
+        if (timeElement) {
+            timeElement.textContent = timeString;
+        }
+    }
+    
+    // Update time immediately and then every minute
+    updateTime();
+    setInterval(updateTime, 60000);
+</script>

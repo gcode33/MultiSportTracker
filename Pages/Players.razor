@@ -3,28 +3,73 @@
 @using MultiSportTracker.Data
 @using MultiSportTracker.Models
 
-<h2>Players</h2>
+<div class="mb-8">
+    <h1 class="text-2xl font-bold mb-4">
+        <span class="text-primary">👥</span>
+        Team Players
+    </h1>
+    <p class="text-gray">Explore the complete roster and player information</p>
+</div>
 
-@if (players == null)
+@if (isLoading)
 {
-    <p>Loading players...</p>
+    <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <h3 class="text-lg font-medium mb-2">Loading players...</h3>
+        <p class="text-gray">Fetching the latest roster information</p>
+    </div>
 }
 else if (!players.Any())
 {
-    <p>No players found.</p>
+    <div class="empty-state">
+        <div class="empty-state-icon">👥</div>
+        <h3 class="text-xl font-semibold mb-2">No players found</h3>
+        <p class="text-gray mb-6">Player roster information is not available for this team.</p>
+        <a href="/" class="btn btn-primary">Back to Home</a>
+    </div>
 }
 else
 {
-    <div class="player-grid">
-        @foreach (var p in players)
+    <div class="mb-6">
+        <p class="text-gray">Found <span class="font-semibold text-primary">@players.Count</span> players in the roster</p>
+    </div>
+    
+    <div class="card-grid">
+        @foreach (var player in players)
         {
-            <div class="player-card">
-                @if (!string.IsNullOrWhiteSpace(p.strCutout))
-                {
-                    <img src="@p.strCutout" alt="@p.strPlayer" width="100" />
-                }
-                <div>@p.strPlayer</div>
-                <div class="muted">@p.strPosition</div>
+            <div class="card">
+                <div class="card-header">
+                    @if (!string.IsNullOrWhiteSpace(player.strCutout))
+                    {
+                        <img src="@player.strCutout" alt="@player.strPlayer" class="card-image" 
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                        <div class="card-image" style="display: none; align-items: center; justify-content: center; background: var(--primary-100); color: var(--primary-600); font-weight: bold; font-size: 1.5rem;">
+                            @GetPlayerInitials(player.strPlayer)
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="card-image" style="display: flex; align-items: center; justify-content: center; background: var(--primary-100); color: var(--primary-600); font-weight: bold; font-size: 1.5rem;">
+                            @GetPlayerInitials(player.strPlayer)
+                        </div>
+                    }
+                    <div>
+                        <h3 class="card-title">@player.strPlayer</h3>
+                        <p class="card-subtitle">@player.strTeam</p>
+                    </div>
+                </div>
+                
+                <div class="card-content">
+                    <div class="flex items-center gap-2 text-sm text-gray mb-2">
+                        <span class="font-medium">Position:</span>
+                        <span class="text-primary bg-primary-100 px-2 py-1 rounded-lg">@(string.IsNullOrWhiteSpace(player.strPosition) ? "Unknown" : player.strPosition)</span>
+                    </div>
+                </div>
+                
+                <div class="card-actions">
+                    <span class="btn btn-secondary btn-sm">📊 Player Stats</span>
+                    <span class="btn btn-secondary btn-sm">📰 News</span>
+                </div>
             </div>
         }
     </div>
@@ -32,10 +77,43 @@ else
 
 @code {
     [Parameter] public string teamId { get; set; } = "";
-    private List<Player>? players;
+    private List<Player> players = new();
+    private bool isLoading = false;
 
     protected override async Task OnParametersSetAsync()
     {
-        players = await SportsApi.GetPlayersAsync(teamId);
+        await LoadPlayers();
+    }
+
+    private async Task LoadPlayers()
+    {
+        isLoading = true;
+        StateHasChanged();
+        
+        try
+        {
+            players = await SportsApi.GetPlayersAsync(teamId);
+        }
+        catch
+        {
+            players = new List<Player>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetPlayerInitials(string playerName)
+    {
+        if (string.IsNullOrWhiteSpace(playerName)) return "?";
+        
+        var words = playerName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length >= 2)
+        {
+            return $"{words[0][0]}{words[1][0]}".ToUpperInvariant();
+        }
+        return playerName.Length >= 2 ? playerName.Substring(0, 2).ToUpperInvariant() : playerName.ToUpperInvariant();
     }
 }

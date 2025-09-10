@@ -4,31 +4,92 @@
 @using MultiSportTracker.Models
 @using System.Globalization
 
-<h2>@(CultureInfo.CurrentCulture.TextInfo.ToTitleCase(league)) Teams</h2>
+<div class="mb-8">
+    <h1 class="text-2xl font-bold mb-4">
+        <span class="text-primary">@GetSportIcon(league)</span>
+        @(CultureInfo.CurrentCulture.TextInfo.ToTitleCase(league)) Teams
+    </h1>
+    <p class="text-gray">Discover teams, view upcoming matches, and explore player rosters.</p>
+</div>
 
-@if (teams == null)
+@if (isLoading)
 {
-    <p>Loading teams...</p>
+    <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <h3 class="text-lg font-medium mb-2">Loading teams...</h3>
+        <p class="text-gray">Fetching the latest team data for @league</p>
+    </div>
+}
+else if (hasError)
+{
+    <div class="error-container">
+        <h3 class="font-semibold mb-2">⚠️ Unable to load teams</h3>
+        <p class="mb-4">We're having trouble connecting to our data source. Showing sample data instead.</p>
+        <button class="btn btn-secondary btn-sm" @onclick="RefreshTeams">Try Again</button>
+    </div>
 }
 else if (!teams.Any())
 {
-    <p>No teams found for '@league'.</p>
+    <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <h3 class="text-xl font-semibold mb-2">No teams found</h3>
+        <p class="text-gray mb-6">We couldn't find any teams for '@league'. Try a different sport or check back later.</p>
+        <div class="flex gap-3 justify-center">
+            <a href="/teams/soccer" class="btn btn-primary">⚽ Soccer Teams</a>
+            <a href="/teams/basketball" class="btn btn-secondary">🏀 Basketball Teams</a>
+        </div>
+    </div>
 }
 else
 {
-    <div class="team-grid">
-        @foreach (var t in teams)
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <p class="text-gray">Found <span class="font-semibold text-primary">@teams.Count</span> teams</p>
+            <button class="btn btn-secondary btn-sm" @onclick="RefreshTeams">
+                🔄 Refresh
+            </button>
+        </div>
+    </div>
+    
+    <div class="card-grid">
+        @foreach (var team in teams)
         {
-            <div class="team-card">
-                @if (!string.IsNullOrWhiteSpace(t.strTeamBadge))
-                {
-                    <img src="@t.strTeamBadge" alt="@t.strTeam" width="80" />
-                }
-                <div class="team-name">@t.strTeam</div>
-                <div class="team-league">@t.strLeague</div>
-                <div class="team-links">
-                    <a href="/events/@t.idTeam">Matches</a> |
-                    <a href="/players/@t.idTeam">Players</a>
+            <div class="card">
+                <div class="card-header">
+                    @if (!string.IsNullOrWhiteSpace(team.strTeamBadge))
+                    {
+                        <img src="@team.strTeamBadge" alt="@team.strTeam logo" class="card-image" 
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                        <div class="card-image" style="display: none; align-items: center; justify-content: center; background: var(--primary-100); color: var(--primary-600); font-weight: bold; font-size: 1.5rem;">
+                            @GetTeamInitials(team.strTeam)
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="card-image" style="display: flex; align-items: center; justify-content: center; background: var(--primary-100); color: var(--primary-600); font-weight: bold; font-size: 1.5rem;">
+                            @GetTeamInitials(team.strTeam)
+                        </div>
+                    }
+                    <div>
+                        <h3 class="card-title">@team.strTeam</h3>
+                        <p class="card-subtitle">@team.strLeague</p>
+                    </div>
+                </div>
+                
+                <div class="card-content">
+                    <div class="flex items-center gap-2 text-sm text-gray mb-2">
+                        <span class="font-medium">Sport:</span>
+                        <span class="text-primary">@GetSportIcon(team.strSport) @team.strSport</span>
+                    </div>
+                </div>
+                
+                <div class="card-actions">
+                    <a href="/events/@team.idTeam" class="btn btn-primary btn-sm">
+                        📅 Matches
+                    </a>
+                    <a href="/players/@team.idTeam" class="btn btn-secondary btn-sm">
+                        👥 Players
+                    </a>
                 </div>
             </div>
         }
@@ -37,10 +98,67 @@ else
 
 @code {
     [Parameter] public string league { get; set; } = "soccer";
-    private List<Team>? teams;
+    private List<Team> teams = new();
+    private bool isLoading = false;
+    private bool hasError = false;
 
     protected override async Task OnParametersSetAsync()
     {
-        teams = await SportsApi.GetTeamsAsync(league);
+        await LoadTeams();
+    }
+
+    private async Task LoadTeams()
+    {
+        isLoading = true;
+        hasError = false;
+        StateHasChanged();
+        
+        try
+        {
+            teams = await SportsApi.GetTeamsAsync(league);
+            hasError = false;
+        }
+        catch
+        {
+            hasError = true;
+            teams = new List<Team>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshTeams()
+    {
+        await LoadTeams();
+    }
+
+    private string GetSportIcon(string sport)
+    {
+        return sport?.ToLowerInvariant() switch
+        {
+            "soccer" => "⚽",
+            "football" => "🏈",
+            "basketball" => "🏀",
+            "baseball" => "⚾",
+            "tennis" => "🎾",
+            "hockey" => "🏒",
+            "volleyball" => "🏐",
+            _ => "🏆"
+        };
+    }
+
+    private string GetTeamInitials(string teamName)
+    {
+        if (string.IsNullOrWhiteSpace(teamName)) return "?";
+        
+        var words = teamName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length >= 2)
+        {
+            return $"{words[0][0]}{words[1][0]}".ToUpperInvariant();
+        }
+        return teamName.Length >= 2 ? teamName.Substring(0, 2).ToUpperInvariant() : teamName.ToUpperInvariant();
     }
 }

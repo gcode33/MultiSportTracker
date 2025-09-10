@@ -1,11 +1,119 @@
 ﻿@page "/"
 
-<h1>Multi-Sport Tracker</h1>
+<div class="text-center mb-12">
+    <h1 class="text-4xl font-bold mb-4">
+        Welcome to <span class="text-primary">Multi-Sport Tracker</span>
+    </h1>
+    <p class="text-xl text-gray mb-6">
+        Your comprehensive hub for live sports data, team information, and match schedules.
+    </p>
+    <div class="flex justify-center gap-2 text-2xl mb-8">
+        <span>⚽</span>
+        <span>🏀</span>
+        <span>⚾</span>
+        <span>🏈</span>
+        <span>🎾</span>
+    </div>
+</div>
 
-<p>Select a league to view teams & matches:</p>
+<div class="mb-8">
+    <h2 class="text-2xl font-semibold mb-4">Popular Sports</h2>
+    <p class="text-gray mb-6">Explore teams and matches across different sports leagues</p>
+</div>
 
-<ul>
-    <li><a href="/teams/soccer">⚽ Soccer</a></li>
-    <li><a href="/teams/basketball">🏀 Basketball</a></li>
-    <li><a href="/teams/baseball">⚾ Baseball</a></li>
-</ul>
+<div class="card-grid">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-image" style="background: linear-gradient(135deg, #10b981, #047857); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                ⚽
+            </div>
+            <div>
+                <h3 class="card-title">Soccer</h3>
+                <p class="card-subtitle">Premier League, La Liga, Serie A</p>
+            </div>
+        </div>
+        <div class="card-content">
+            <p class="text-sm text-gray">Follow your favorite football teams from around the world. Get live scores, team stats, and player information.</p>
+        </div>
+        <div class="card-actions">
+            <a href="/teams/soccer" class="btn btn-primary btn-sm">View Soccer Teams</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <div class="card-image" style="background: linear-gradient(135deg, #f59e0b, #d97706); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                🏀
+            </div>
+            <div>
+                <h3 class="card-title">Basketball</h3>
+                <p class="card-subtitle">NBA, EuroLeague, NCAA</p>
+            </div>
+        </div>
+        <div class="card-content">
+            <p class="text-sm text-gray">Track NBA teams, playoff standings, and star player performances across professional basketball leagues.</p>
+        </div>
+        <div class="card-actions">
+            <a href="/teams/basketball" class="btn btn-primary btn-sm">View Basketball Teams</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <div class="card-image" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                ⚾
+            </div>
+            <div>
+                <h3 class="card-title">Baseball</h3>
+                <p class="card-subtitle">MLB, Minor Leagues</p>
+            </div>
+        </div>
+        <div class="card-content">
+            <p class="text-sm text-gray">America's pastime with comprehensive coverage of Major League Baseball teams, stats, and schedules.</p>
+        </div>
+        <div class="card-actions">
+            <a href="/teams/baseball" class="btn btn-primary btn-sm">View Baseball Teams</a>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <div class="card-image" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">
+                🏈
+            </div>
+            <div>
+                <h3 class="card-title">American Football</h3>
+                <p class="card-subtitle">NFL, College Football</p>
+            </div>
+        </div>
+        <div class="card-content">
+            <p class="text-sm text-gray">Follow NFL teams through regular season and playoffs, plus college football coverage and stats.</p>
+        </div>
+        <div class="card-actions">
+            <a href="/teams/football" class="btn btn-primary btn-sm">View Football Teams</a>
+        </div>
+    </div>
+</div>
+
+<div class="mt-12 text-center">
+    <div class="bg-primary-50 rounded-2xl p-8">
+        <h2 class="text-2xl font-bold text-primary-800 mb-4">🚀 Features</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            <div>
+                <div class="text-3xl mb-2">📊</div>
+                <h3 class="font-semibold mb-2">Live Data</h3>
+                <p class="text-sm text-gray">Real-time sports data from reliable sources</p>
+            </div>
+            <div>
+                <div class="text-3xl mb-2">👥</div>
+                <h3 class="font-semibold mb-2">Team Rosters</h3>
+                <p class="text-sm text-gray">Complete player information and statistics</p>
+            </div>
+            <div>
+                <div class="text-3xl mb-2">📅</div>
+                <h3 class="font-semibold mb-2">Match Schedules</h3>
+                <p class="text-sm text-gray">Upcoming games and historical results</p>
+            </div>
+        </div>
+    </div>
+</div>
