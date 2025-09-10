@@ -27,12 +27,44 @@ namespace MultiSportTracker.Data
             try
             {
                 _logger.LogInformation("Fetching teams for league: {League}", league);
-                var resp = await _http.GetFromJsonAsync<TeamResponse>($"search_all_teams.php?l={Uri.EscapeDataString(league)}");
-                var list = resp?.teams ?? new List<Team>();
                 
-                _logger.LogInformation("Successfully fetched {Count} teams for league: {League}", list.Count, league);
-                _cache.Set(key, list, minutes: 30);
-                return list;
+                // Get league mappings for the sport
+                var leagueMappings = GetLeagueMappings(league);
+                var allTeams = new List<Team>();
+                
+                // Fetch teams from multiple leagues for this sport
+                foreach (var mapping in leagueMappings)
+                {
+                    try
+                    {
+                        TeamResponse? resp = null;
+                        
+                        // Try league ID lookup first (more reliable)
+                        if (!string.IsNullOrEmpty(mapping.LeagueId))
+                        {
+                            resp = await _http.GetFromJsonAsync<TeamResponse>($"lookup_all_teams.php?id={mapping.LeagueId}");
+                        }
+                        
+                        // Fallback to league name search
+                        if (resp?.teams == null && !string.IsNullOrEmpty(mapping.LeagueName))
+                        {
+                            resp = await _http.GetFromJsonAsync<TeamResponse>($"search_all_teams.php?l={Uri.EscapeDataString(mapping.LeagueName)}");
+                        }
+                        
+                        if (resp?.teams != null)
+                        {
+                            allTeams.AddRange(resp.teams);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to fetch teams for league {LeagueName} (ID: {LeagueId})", mapping.LeagueName, mapping.LeagueId);
+                    }
+                }
+                
+                _logger.LogInformation("Successfully fetched {Count} teams for sport: {League}", allTeams.Count, league);
+                _cache.Set(key, allTeams, minutes: 30);
+                return allTeams;
             }
             catch (HttpRequestException ex)
             {
@@ -42,7 +74,7 @@ namespace MultiSportTracker.Data
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error when fetching teams for league: {League}", league);
-                return new List<Team>();
+                return GetFallbackTeams(league);
             }
         }
 
@@ -100,6 +132,39 @@ namespace MultiSportTracker.Data
             }
         }
 
+        private List<LeagueMapping> GetLeagueMappings(string sport)
+        {
+            return sport.ToLowerInvariant() switch
+            {
+                "soccer" => new List<LeagueMapping>
+                {
+                    new("", "English Premier League"),
+                    new("", "Spanish La Liga"),
+                    new("", "German Bundesliga"),
+                    new("", "Italian Serie A"),
+                    new("", "French Ligue 1"),
+                    new("", "American Major League Soccer"),
+                },
+                "basketball" => new List<LeagueMapping>
+                {
+                    new("", "NBA"),
+                    new("", "NCAA"),
+                    new("", "WNBA"),
+                },
+                "baseball" => new List<LeagueMapping>
+                {
+                    new("", "MLB"),
+                    new("", "NCAA Baseball"),
+                },
+                "football" or "american football" => new List<LeagueMapping>
+                {
+                    new("", "NFL"),
+                    new("", "NCAA Football"),
+                },
+                _ => new List<LeagueMapping>()
+            };
+        }
+
         private List<Team> GetFallbackTeams(string league)
         {
             _logger.LogInformation("Using fallback data for league: {League}", league);
@@ -128,4 +193,6 @@ namespace MultiSportTracker.Data
             };
         }
     }
+
+    public record LeagueMapping(string LeagueId, string LeagueName);
 }
