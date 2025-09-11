@@ -546,12 +546,20 @@ nav a.active {
 .bg-primary-600 { background-color: var(--primary-600); }
 .bg-gray-700 { background-color: var(--gray-700); }
 .bg-success-500 { background-color: var(--success-500); }
+.bg-warning-50 { background-color: #fefdf8; }
+.bg-primary-200 { background-color: var(--primary-200); }
 
 .text-primary-700 { color: var(--primary-700); }
+.text-primary-800 { color: var(--primary-800); }
+.text-primary-600 { color: var(--primary-600); }
 .text-gray-400 { color: var(--gray-400); }
 .text-gray-300 { color: var(--gray-300); }
 .text-gray-600 { color: var(--gray-600); }
 .text-white { color: white; }
+.text-warning-700 { color: #a16207; }
+
+.border { border-width: 1px; }
+.border-primary-200 { border-color: var(--primary-200); }
 
 .w-2 { width: 0.5rem; }
 .h-2 { height: 0.5rem; }

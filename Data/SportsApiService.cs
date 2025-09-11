@@ -113,22 +113,86 @@ namespace MultiSportTracker.Data
             try
             {
                 _logger.LogInformation("Fetching players for team: {TeamId}", teamId);
-                var resp = await _http.GetFromJsonAsync<PlayerResponse>($"lookup_all_players.php?id={Uri.EscapeDataString(teamId)}");
-                var list = resp?.player ?? new List<Player>();
                 
-                _logger.LogInformation("Successfully fetched {Count} players for team: {TeamId}", list.Count, teamId);
-                _cache.Set(key, list, minutes: 60);
-                return list;
+                // First, try to get the team name from our teams cache or API
+                var teamName = await GetTeamNameAsync(teamId);
+                _logger.LogInformation("Found team name: {TeamName} for ID: {TeamId}", teamName ?? "null", teamId);
+                
+                var players = new List<Player>();
+                
+                // Try ID-based lookup first (most direct)
+                try
+                {
+                    var resp = await _http.GetFromJsonAsync<PlayerResponse>($"lookup_all_players.php?id={Uri.EscapeDataString(teamId)}");
+                    if (resp?.player != null && resp.player.Any())
+                    {
+                        players = resp.player;
+                        _logger.LogInformation("Got {Count} players from ID lookup for team: {TeamId}", players.Count, teamId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to lookup players by team ID: {TeamId}", teamId);
+                }
+                
+                // Try team name search if ID lookup didn't work
+                if (!players.Any() && !string.IsNullOrEmpty(teamName))
+                {
+                    try
+                    {
+                        var resp = await _http.GetFromJsonAsync<PlayerResponse>($"searchplayers.php?t={Uri.EscapeDataString(teamName)}");
+                        if (resp?.player != null && resp.player.Any())
+                        {
+                            players = resp.player;
+                            _logger.LogInformation("Got {Count} players from name search for team: {TeamName}", players.Count, teamName);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to search players by team name: {TeamName}", teamName);
+                    }
+                }
+                
+                // Now check what we got
+                if (players.Any())
+                {
+                    var isArsenalTeam = teamName?.Contains("Arsenal", StringComparison.OrdinalIgnoreCase) == true;
+                    var hasArsenalPlayers = players.All(p => p.strTeam?.Contains("Arsenal", StringComparison.OrdinalIgnoreCase) == true);
+                    
+                    _logger.LogInformation("Team analysis - IsArsenalTeam: {IsArsenal}, HasArsenalPlayers: {HasArsenal}, PlayerTeam: {PlayerTeam}", 
+                        isArsenalTeam, hasArsenalPlayers, players.FirstOrDefault()?.strTeam ?? "null");
+                    
+                    // If this is not Arsenal but we got Arsenal players, use fallback data
+                    if (!isArsenalTeam && hasArsenalPlayers)
+                    {
+                        _logger.LogInformation("API limitation detected: Non-Arsenal team got Arsenal players. Using fallback data.");
+                        players = GetFallbackPlayers(teamId, teamName ?? "Unknown Team");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Using real API player data for team: {TeamName}", teamName);
+                    }
+                }
+                else
+                {
+                    // No players found at all, use fallback
+                    _logger.LogInformation("No players found from API, using fallback data for team: {TeamName}", teamName);
+                    players = GetFallbackPlayers(teamId, teamName ?? "Unknown Team");
+                }
+                
+                _logger.LogInformation("Returning {Count} players for team: {TeamId} ({TeamName})", players.Count, teamId, teamName);
+                _cache.Set(key, players, minutes: 60);
+                return players;
             }
             catch (HttpRequestException ex)
             {
                 _logger.LogError(ex, "HTTP error when fetching players for team: {TeamId}", teamId);
-                return new List<Player>();
+                return GetFallbackPlayers(teamId, "Unknown Team");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error when fetching players for team: {TeamId}", teamId);
-                return new List<Player>();
+                return GetFallbackPlayers(teamId, "Unknown Team");
             }
         }
 
@@ -162,6 +226,95 @@ namespace MultiSportTracker.Data
                     new("", "NCAA Football"),
                 },
                 _ => new List<LeagueMapping>()
+            };
+        }
+
+        private async Task<string?> GetTeamNameAsync(string teamId)
+        {
+            // First check if we have the team in our cache from previous team lookups
+            var cacheKeys = new[] { "teams:soccer", "teams:basketball", "teams:baseball", "teams:football" };
+            
+            foreach (var cacheKey in cacheKeys)
+            {
+                if (_cache.TryGet<List<Team>>(cacheKey, out var teams))
+                {
+                    var team = teams.FirstOrDefault(t => t.idTeam == teamId);
+                    if (team != null)
+                    {
+                        return team.strTeam;
+                    }
+                }
+            }
+            
+            // If not in cache, try to look up the team by ID
+            try
+            {
+                var resp = await _http.GetFromJsonAsync<TeamResponse>($"lookupteam.php?id={Uri.EscapeDataString(teamId)}");
+                return resp?.teams?.FirstOrDefault()?.strTeam;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to lookup team name for ID: {TeamId}", teamId);
+                return null;
+            }
+        }
+
+        private List<Player> GetFallbackPlayers(string teamId, string teamName)
+        {
+            _logger.LogInformation("Using fallback player data for team: {TeamName} (ID: {TeamId})", teamName, teamId);
+            
+            // Generate some sample players based on the team and sport
+            var sport = GetSportFromTeamName(teamName);
+            var positions = GetPositionsForSport(sport);
+            
+            var players = new List<Player>();
+            var sampleNames = GetSampleNamesForSport(sport);
+            
+            for (int i = 0; i < Math.Min(positions.Length, sampleNames.Length); i++)
+            {
+                players.Add(new Player
+                {
+                    idPlayer = $"demo_{teamId}_{i}",
+                    strPlayer = sampleNames[i],
+                    strTeam = teamName,
+                    strPosition = positions[i],
+                    strCutout = "" // No images for demo data
+                });
+            }
+            
+            return players;
+        }
+        
+        private string GetSportFromTeamName(string teamName)
+        {
+            if (string.IsNullOrEmpty(teamName)) return "Soccer";
+            
+            var name = teamName.ToLowerInvariant();
+            if (name.Contains("lakers") || name.Contains("celtics") || name.Contains("warriors") || name.Contains("hawks")) return "Basketball";
+            if (name.Contains("yankees") || name.Contains("dodgers") || name.Contains("red sox")) return "Baseball";
+            if (name.Contains("patriots") || name.Contains("cowboys") || name.Contains("packers")) return "American Football";
+            return "Soccer";
+        }
+        
+        private string[] GetPositionsForSport(string sport)
+        {
+            return sport switch
+            {
+                "Basketball" => new[] { "Point Guard", "Shooting Guard", "Small Forward", "Power Forward", "Center" },
+                "Baseball" => new[] { "Pitcher", "Catcher", "First Base", "Second Base", "Shortstop", "Third Base", "Left Field", "Center Field", "Right Field" },
+                "American Football" => new[] { "Quarterback", "Running Back", "Wide Receiver", "Tight End", "Offensive Line", "Defensive Line", "Linebacker", "Cornerback", "Safety" },
+                _ => new[] { "Goalkeeper", "Defender", "Midfielder", "Forward", "Winger" }
+            };
+        }
+        
+        private string[] GetSampleNamesForSport(string sport)
+        {
+            return sport switch
+            {
+                "Basketball" => new[] { "Demo Player 1", "Demo Player 2", "Demo Player 3", "Demo Player 4", "Demo Player 5" },
+                "Baseball" => new[] { "Demo Pitcher", "Demo Catcher", "Demo Infielder 1", "Demo Infielder 2", "Demo Infielder 3", "Demo Infielder 4", "Demo Outfielder 1", "Demo Outfielder 2", "Demo Outfielder 3" },
+                "American Football" => new[] { "Demo QB", "Demo RB", "Demo WR1", "Demo WR2", "Demo TE", "Demo OL", "Demo DL", "Demo LB", "Demo DB" },
+                _ => new[] { "Demo Keeper", "Demo Defender 1", "Demo Midfielder 1", "Demo Forward 1", "Demo Winger" }
             };
         }
 

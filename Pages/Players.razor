@@ -31,7 +31,30 @@ else if (!players.Any())
 else
 {
     <div class="mb-6">
-        <p class="text-gray">Found <span class="font-semibold text-primary">@players.Count</span> players in the roster</p>
+        <div class="flex items-center justify-between mb-4">
+            <p class="text-gray">Found <span class="font-semibold text-primary">@players.Count</span> players in the roster</p>
+            @if (HasDemoData())
+            {
+                <div class="bg-warning-50 text-warning-700 px-3 py-1 rounded-full text-sm font-medium">
+                    🎯 Demo Data
+                </div>
+            }
+        </div>
+        @if (HasDemoData())
+        {
+            <div class="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-4">
+                <div class="flex items-start gap-3">
+                    <div class="text-primary-600 text-xl">💡</div>
+                    <div>
+                        <h4 class="font-semibold text-primary-800 mb-1">Player Data Limitation</h4>
+                        <p class="text-sm text-primary-700">
+                            The free sports API has limited player data. We're showing demo players with realistic positions for this team. 
+                            <strong>Arsenal players from the API are real data!</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
     
     <div class="card-grid">
@@ -115,5 +138,10 @@ else
             return $"{words[0][0]}{words[1][0]}".ToUpperInvariant();
         }
         return playerName.Length >= 2 ? playerName.Substring(0, 2).ToUpperInvariant() : playerName.ToUpperInvariant();
+    }
+    
+    private bool HasDemoData()
+    {
+        return players.Any(p => p.idPlayer?.StartsWith("demo_") == true || p.strPlayer?.StartsWith("Demo ") == true);
     }
 }
